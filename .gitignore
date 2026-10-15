@@ -1,0 +1,11 @@
+
+# Secret configuration files
+.env
+.env.*
+
+# JavaScript dependencies
+node_modules/
+
+# Temporary and log files
+*.log
+.DS_Store
