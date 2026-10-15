@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Arena - CodeQuest</title>
+  <meta name="description"
+    content="Practice coding exercises in Python, JavaScript, Java, and C++ with CodeQuest interactive arena.">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body style="overflow: hidden;">
+
+  <!-- Main Navigation -->
+  <nav class="navbar" id="problem-navbar">
+    <div class="nav-brand">
+      <a href="index.html" style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="brand-logo" aria-hidden="true">🚀</div>
+        <span class="brand-title">CodeQuest</span>
+      </a>
+    </div>
+
+    <ul class="nav-links">
+      <li class="nav-item">
+        <a href="index.html" id="nav-all-quests">
+          <span>🏠</span> Quests
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="problem.html" class="active" id="nav-arena">
+          <span>💻</span> Code Arena
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="progress.html" id="nav-progress-link">
+          <span>📊</span> Progress
+        </a>
+      </li>
+    </ul>
+
+    <div class="nav-stats">
+      <div class="user-xp-badge" id="nav-xp-badge">
+        <span>⚡</span>
+        <span id="nav-xp-counter">0 XP</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Workspace Container: Specs (Left) and Editor/Console (Right) -->
+  <main class="workspace-container">
+
+    <!-- LEFT PANEL: Problem Specification & Learning Guide -->
+    <aside class="panel-specs" id="panel-specs">
+      <!-- Problem Header & Quick Navigation -->
+      <div class="problem-nav-header">
+        <a href="index.html" class="back-link" id="back-to-catalog">
+          <span>←</span> Back to Quests
+        </a>
+        <select id="problem-select-dropdown" class="problem-selector-select" aria-label="Select quest">
+          <!-- Populated by js/app.js -->
+        </select>
+      </div>
+
+      <!-- Problem Title & Badges -->
+      <div class="specs-title-block">
+        <h1 class="specs-title" id="problem-title">Loading Quest...</h1>
+        <div class="meta-tags-row">
+          <span class="category-tag" id="problem-category-badge">Basics</span>
+          <span class="badge-difficulty easy" id="problem-diff-badge">Easy</span>
+          <span class="xp-indicator" id="problem-xp-badge">⚡ +50 XP</span>
+        </div>
+      </div>
+
+      <!-- Problem Description Content -->
+      <div class="rich-description" id="problem-description">
+        <!-- Rendered by js/app.js -->
+      </div>
+
+      <!-- Sample Input & Output -->
+      <div class="example-box">
+        <div class="example-box-header">Sample Test Case</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Sample Input:</div>
+        <div class="code-snippet" id="sample-input-code">...</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0.35rem;">Expected Output:</div>
+        <div class="code-snippet" id="sample-output-code">...</div>
+      </div>
+
+      <!-- Beginner Hints Accordion -->
+      <div class="hints-container">
+        <div class="hints-header">
+          <span>💡</span> Need a Hint? Click below to reveal:
+        </div>
+        <div id="hints-accordion-group">
+          <!-- Populated by js/app.js -->
+        </div>
+      </div>
+
+      <!-- Core Concepts Learned -->
+      <div>
+        <div
+          style="font-size: 0.82rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">
+          Concepts You'll Practice:
+        </div>
+        <div class="concepts-cloud" id="concepts-tag-cloud">
+          <!-- Populated by js/app.js -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL: Interactive Code Editor & Test Console -->
+    <section class="panel-editor-view" id="panel-editor">
+      <!-- Editor Top Toolbar -->
+      <div class="editor-toolbar">
+        <!-- Language Switcher Tabs -->
+        <div class="editor-lang-tabs" id="editor-lang-tabs">
+          <button class="editor-lang-btn active" data-lang="python" id="btn-lang-python">
+            <span>🐍</span> Python
+          </button>
+          <button class="editor-lang-btn" data-lang="javascript" id="btn-lang-js">
+            <span>⚡</span> JavaScript
+          </button>
+          <button class="editor-lang-btn" data-lang="java" id="btn-lang-java">
+            <span>☕</span> Java
+          </button>
+          <button class="editor-lang-btn" data-lang="cpp" id="btn-lang-cpp">
+            <span>⚙️</span> C++
+          </button>
+        </div>
+
+        <!-- Editor Controls -->
+        <div class="editor-tools">
+          <button class="tool-btn" id="font-dec-btn" title="Decrease Editor Font Size">A-</button>
+          <button class="tool-btn" id="font-inc-btn" title="Increase Editor Font Size">A+</button>
+          <button class="tool-btn" id="copy-code-btn" title="Copy Code">
+            <span>📋</span> Copy
+          </button>
+          <button class="tool-btn" id="reset-code-btn" title="Reset Starter Code">
+            <span>↺</span> Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Textarea Code Editor Area -->
+      <div class="editor-body-wrapper">
+        <textarea id="code-editor-textarea" class="code-textarea" placeholder="Write your code here..."
+          spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code Editor"></textarea>
+      </div>
+
+      <!-- Sandbox Notice Disclaimer -->
+      <div class="sandbox-notice-banner">
+        <span>💡</span>
+        <span><strong>Student Sandbox:</strong> Evaluates syntax and test inputs locally in your browser for hands-on
+          learning.</span>
+      </div>
+
+      <!-- Action Buttons Bar -->
+      <div class="editor-actions-bar">
+        <div class="left-actions">
+          <a href="index.html" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 0.9rem;">
+            <span>←</span> All Quests
+          </a>
+        </div>
+        <div class="right-actions">
+          <button class="btn btn-secondary" id="run-tests-btn">
+            <span>▶</span> Run Tests
+          </button>
+          <button class="btn btn-primary" id="submit-solution-btn">
+            <span>🚀</span> Submit Solution
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Console & Test Cases Panel -->
+      <div class="console-panel">
+        <div class="console-header-tabs">
+          <button class="console-tab active" data-tab="cases" id="tab-test-cases">
+            🧪 Test Cases
+          </button>
+          <button class="console-tab" data-tab="logs" id="tab-console-logs">
+            📋 Terminal Output
+          </button>
+          <button class="console-tab" data-tab="explanation" id="tab-explanation">
+            📖 Solution Guide
+          </button>
+        </div>
+
+        <!-- Tab 1: Test Cases View -->
+        <div class="console-content-area" id="test-cases-view">
+          <!-- Populated by js/app.js -->
+        </div>
+
+        <!-- Tab 2: Console Terminal Output -->
+        <div class="console-content-area" id="console-logs-view" style="display: none;">
+          <div class="console-logs-output">
+            Click "Run Tests" or "Submit Solution" to inspect compiler checks and evaluation output...
+          </div>
+        </div>
+
+        <!-- Tab 3: Solution Explanation -->
+        <div class="console-content-area" id="explanation-view" style="display: none;">
+          <!-- Populated by js/app.js -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/problems.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

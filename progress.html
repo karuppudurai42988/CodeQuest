@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Progress - CodeQuest</title>
+  <meta name="description" content="Track your coding milestones, language mastery, XP, and achievements on CodeQuest.">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="progress-navbar">
+    <div class="nav-brand">
+      <a href="index.html" style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="brand-logo" aria-hidden="true">🚀</div>
+        <span class="brand-title">CodeQuest</span>
+      </a>
+    </div>
+
+    <ul class="nav-links">
+      <li class="nav-item">
+        <a href="index.html" id="nav-quests">
+          <span>🏠</span> Quests
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="problem.html" id="nav-code-arena">
+          <span>💻</span> Code Arena
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="progress.html" class="active" id="nav-my-progress">
+          <span>📊</span> My Progress
+        </a>
+      </li>
+    </ul>
+
+    <div class="nav-stats">
+      <div class="user-xp-badge" id="nav-xp-badge">
+        <span>⚡</span>
+        <span id="nav-xp-counter">0 XP</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Progress Container -->
+  <main class="progress-container">
+
+    <!-- Hero Card Profile Overview -->
+    <section class="progress-hero-card">
+      <div class="user-profile-meta">
+        <div class="avatar-badge" id="profile-avatar-icon">🌱</div>
+        <div class="profile-text">
+          <div
+            style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+            Student Profile
+          </div>
+          <h2 id="profile-rank-title">Novice Explorer</h2>
+          <div class="profile-role">Level 1 • Ready to Code</div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Metric Boxes -->
+      <div class="progress-metrics-group">
+        <div class="metric-box">
+          <div class="metric-value" id="metric-total-xp">0</div>
+          <div class="metric-label">Total XP</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="metric-solved-count">0 / 8</div>
+          <div class="metric-label">Completed</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="metric-completion-rate">0%</div>
+          <div class="metric-label">Mastery</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Language Mastery Section -->
+    <section style="margin-bottom: 2.5rem;">
+      <div class="section-header" style="margin-bottom: 1rem;">
+        <div>
+          <h3 class="section-title" style="font-size: 1.4rem;">Language Progress</h3>
+          <p class="section-desc">Track how many challenges you have conquered in each programming language.</p>
+        </div>
+      </div>
+
+      <div class="languages-progress-grid" id="languages-progress-grid">
+        <!-- Rendered dynamically by js/app.js -->
+      </div>
+    </section>
+
+    <!-- Badges & Achievements Section -->
+    <section class="achievements-section">
+      <div class="section-header" style="margin-bottom: 0.5rem;">
+        <div>
+          <h3 class="section-title" style="font-size: 1.4rem;">Achievements & Badges</h3>
+          <p class="section-desc">Unlock special milestones as you practice coding challenges.</p>
+        </div>
+      </div>
+
+      <div class="achievements-grid" id="achievements-grid">
+        <!-- Rendered dynamically by js/app.js -->
+      </div>
+    </section>
+
+    <!-- Solved History Table -->
+    <section class="history-section">
+      <div class="section-header" style="margin-bottom: 0.5rem;">
+        <div>
+          <h3 class="section-title" style="font-size: 1.4rem;">Completed Quests Record</h3>
+          <p class="section-desc">Review your past submissions and practice code.</p>
+        </div>
+      </div>
+
+      <div class="history-table-wrapper">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Quest Title</th>
+              <th>Topic</th>
+              <th>Language</th>
+              <th>XP Earned</th>
+              <th>Completed Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <!-- Populated by js/app.js -->
+          </tbody>
+        </table>
+
+        <!-- Empty state placeholder -->
+        <div id="history-empty-state"
+          style="padding: 2.5rem; text-align: center; color: var(--text-muted); display: none;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📜</div>
+          <h4>No completed quests yet</h4>
+          <p style="font-size: 0.88rem; margin: 0.4rem 0 1rem;">Solve your first problem in the Code Arena to begin
+            building your record!</p>
+          <a href="problem.html" class="btn btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Start
+            Questing →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reset Settings Box -->
+    <section style="display: flex; justify-content: flex-end; padding-top: 1rem;">
+      <button class="btn btn-secondary" id="reset-all-progress-btn"
+        style="color: #f87171; border-color: rgba(248, 113, 113, 0.3); font-size: 0.82rem;">
+        <span>🗑️</span> Reset All Learning Data
+      </button>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="nav-brand">
+        <div class="brand-logo" style="width: 30px; height: 30px; font-size: 1rem;">🚀</div>
+        <span class="brand-title" style="font-size: 1.1rem;">CodeQuest</span>
+      </div>
+      <ul class="footer-nav">
+        <li><a href="index.html">Home / Quests</a></li>
+        <li><a href="problem.html">Coding Arena</a></li>
+        <li><a href="progress.html">Student Progress</a></li>
+      </ul>
+      <div class="disclaimer-badge">
+        ℹ️ Local progress stored in your browser's localStorage • No accounts or server database needed.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/problems.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

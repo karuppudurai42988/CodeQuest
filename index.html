@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest - Beginner-Friendly Coding Practice</title>
+  <meta name="description"
+    content="Master coding with CodeQuest! Interactive, beginner-friendly practice quests for Python, JavaScript, Java, and C++.">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="main-navbar">
+    <div class="nav-brand">
+      <div class="brand-logo" aria-hidden="true">🚀</div>
+      <div>
+        <span class="brand-title">CodeQuest</span>
+        <span class="brand-badge">Student Edition</span>
+      </div>
+    </div>
+
+    <ul class="nav-links">
+      <li class="nav-item">
+        <a href="index.html" class="active" id="nav-home">
+          <span>🏠</span> Quests
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="problem.html" id="nav-solver">
+          <span>💻</span> Code Arena
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="progress.html" id="nav-progress">
+          <span>📊</span> My Progress
+        </a>
+      </li>
+    </ul>
+
+    <div class="nav-stats">
+      <div class="user-xp-badge" id="nav-xp-badge" title="Your Total Experience Points">
+        <span>⚡</span>
+        <span id="nav-xp-counter">0 XP</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-pill">
+      <span>✨</span> Beginner Friendly • Zero Complex Setup • 100% Free
+    </div>
+    <h1 class="hero-title">
+      Learn to Code with Confidence, <br>
+      <span class="gradient-text">One Quest at a Time.</span>
+    </h1>
+    <p class="hero-subtitle">
+      Hands-on practice designed specifically for beginners and students. Solve challenges in Python, JavaScript, Java,
+      and C++ with step-by-step hints and instant feedback.
+    </p>
+
+    <div class="hero-actions">
+      <a href="problem.html?id=hello-world&lang=python" class="btn btn-primary" id="hero-start-btn">
+        <span>⚔️ Start Your First Quest</span>
+      </a>
+      <a href="progress.html" class="btn btn-secondary" id="hero-progress-btn">
+        <span>📈 View Learning Dashboard</span>
+      </a>
+    </div>
+
+    <!-- Quick Stats Strip -->
+    <div class="stats-strip">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-total-problems">8</div>
+        <div class="stat-label">Starter Quests</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">4</div>
+        <div class="stat-label">Popular Languages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-completed-problems">0</div>
+        <div class="stat-label">Quests Solved</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-total-xp">0</div>
+        <div class="stat-label">Earned XP</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Explorer & Problem Catalog -->
+  <main class="explorer-section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Explore Coding Quests</h2>
+        <p class="section-desc">Pick a topic and language to start practicing essential programming concepts.</p>
+      </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="filters-toolbar">
+      <!-- Language Tabs -->
+      <div class="language-tabs" id="lang-filter-tabs">
+        <button class="lang-tab active" data-lang="all" id="filter-lang-all">
+          <span>🌟</span> All Languages
+        </button>
+        <button class="lang-tab" data-lang="python" id="filter-lang-python">
+          <span>🐍</span> Python
+        </button>
+        <button class="lang-tab" data-lang="javascript" id="filter-lang-js">
+          <span>⚡</span> JavaScript
+        </button>
+        <button class="lang-tab" data-lang="java" id="filter-lang-java">
+          <span>☕</span> Java
+        </button>
+        <button class="lang-tab" data-lang="cpp" id="filter-lang-cpp">
+          <span>⚙️</span> C++
+        </button>
+      </div>
+
+      <!-- Search & Difficulty Filter -->
+      <div class="search-difficulty-group">
+        <div class="search-box-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" class="search-input"
+            placeholder="Search quests (e.g. loops, vowels, string)..." aria-label="Search coding quests">
+        </div>
+
+        <select id="difficulty-filter" class="difficulty-select" aria-label="Filter by difficulty">
+          <option value="all">All Levels</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Problems Grid -->
+    <div class="problems-grid" id="problems-grid">
+      <!-- Populated dynamically by js/app.js from js/problems.js -->
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="nav-brand">
+        <div class="brand-logo" style="width: 30px; height: 30px; font-size: 1rem;">🚀</div>
+        <span class="brand-title" style="font-size: 1.1rem;">CodeQuest</span>
+      </div>
+      <ul class="footer-nav">
+        <li><a href="index.html">Home / Quests</a></li>
+        <li><a href="problem.html">Coding Arena</a></li>
+        <li><a href="progress.html">Student Progress</a></li>
+      </ul>
+      <div class="disclaimer-badge">
+        ℹ️ Frontend Prototype Demo • Code evaluation simulated in-browser for learning demonstrations • No backend
+        server needed.
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-dim);">
+        &copy; CodeQuest. Designed to empower beginning coders with interactive practice.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/problems.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
