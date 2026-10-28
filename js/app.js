@@ -6,21 +6,109 @@
 
 // Local Storage Key
 const STORAGE_KEY = "codequest_student_v1";
+const CURRENT_SCHEMA_VERSION = 2;
 
 // -----------------------------------------------------------------------------
 // Storage & Progress State Management
 // -----------------------------------------------------------------------------
+function migrateStudentDataIfNeeded(data) {
+  if (!data || typeof data !== "object") {
+    return {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      completed: {},
+      drafts: {},
+      activeLanguage: "python"
+    };
+  }
+
+  let modified = false;
+  if (!data.completed) data.completed = {};
+
+  // 1. Migrate legacy unmigrated keys (keys without a colon delimiter, e.g. "hello-world")
+  // In CodeQuest legacy v1, all completed quests represented Python curriculum completions.
+  for (const [key, value] of Object.entries(data.completed)) {
+    if (!key.includes(":")) {
+      const problemId = (value && value.problemId) || key;
+      const targetKey = `${problemId}:python`;
+      if (!data.completed[targetKey]) {
+        data.completed[targetKey] = {
+          problemId: problemId,
+          language: "python",
+          completedAt: (value && value.completedAt) || new Date().toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }),
+          xp: (value && typeof value.xp === "number") ? value.xp : 50
+        };
+      }
+      delete data.completed[key];
+      modified = true;
+    }
+  }
+
+  // 2. Repair legacy records erroneously migrated to JavaScript in early v2
+  // In CodeQuest legacy v1, all 8 completed quests represented Python completions.
+  // If a problem is missing from Python, but exists under :javascript where problemId !== "hello-world"
+  // (since only hello-world was newly completed in JS during testing), restore it to Python.
+  const fallbackProblems = [
+    { id: "hello-world", xp: 50 },
+    { id: "sum-two-numbers", xp: 50 },
+    { id: "even-or-odd", xp: 50 },
+    { id: "reverse-string", xp: 75 },
+    { id: "find-maximum", xp: 75 },
+    { id: "fizz-buzz", xp: 100 },
+    { id: "palindrome-checker", xp: 100 },
+    { id: "count-vowels", xp: 100 }
+  ];
+  const problemList = (typeof getAllProblems === "function" && getAllProblems().length > 0)
+    ? getAllProblems()
+    : fallbackProblems;
+
+  problemList.forEach(prob => {
+    const pythonKey = `${prob.id}:python`;
+    const jsKey = `${prob.id}:javascript`;
+
+    if (!data.completed[pythonKey] && data.completed[jsKey] && prob.id !== "hello-world") {
+      const existing = data.completed[jsKey];
+      data.completed[pythonKey] = {
+        problemId: prob.id,
+        language: "python",
+        completedAt: existing.completedAt || new Date().toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }),
+        xp: typeof existing.xp === "number" ? existing.xp : (prob.xp || 50)
+      };
+      delete data.completed[jsKey];
+      modified = true;
+    }
+  });
+
+  if (data.schemaVersion !== CURRENT_SCHEMA_VERSION || modified) {
+    data.schemaVersion = CURRENT_SCHEMA_VERSION;
+    saveStudentData(data);
+  }
+
+  return data;
+}
+
 function getStudentData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return migrateStudentDataIfNeeded(parsed);
+      }
     }
   } catch (err) {
     console.error("Error reading localStorage:", err);
   }
   return {
-    completed: {}, // problemId -> { completedAt, language, xp }
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    completed: {}, // `${problemId}:${lang}` -> { problemId, language, completedAt, xp }
     drafts: {},    // `${problemId}_${lang}` -> codeString
     activeLanguage: "python"
   };
@@ -34,24 +122,58 @@ function saveStudentData(data) {
   }
 }
 
-function isProblemCompleted(problemId) {
+/**
+ * Checks whether a problem is completed.
+ * If language is specified, checks completion for that exact language.
+ * If language is omitted or null, checks whether completed in ANY language.
+ */
+function isProblemCompleted(problemId, language = null) {
   const data = getStudentData();
-  return Boolean(data.completed && data.completed[problemId]);
+  if (!data.completed) return false;
+  if (language) {
+    return Boolean(data.completed[`${problemId}:${language}`]);
+  }
+  return Object.values(data.completed).some(item => item && item.problemId === problemId);
 }
 
+/**
+ * Returns a list of language keys in which the given problem has been completed.
+ */
+function getCompletedLanguagesForProblem(problemId) {
+  const data = getStudentData();
+  const completedLangs = [];
+  for (const item of Object.values(data.completed || {})) {
+    if (item && item.problemId === problemId && item.language) {
+      if (!completedLangs.includes(item.language)) {
+        completedLangs.push(item.language);
+      }
+    }
+  }
+  return completedLangs;
+}
+
+/**
+ * Records completion for a problem in a specific language.
+ * Returns true if this language completion is brand new (XP awarded),
+ * or false if this problem was already completed in this exact language.
+ */
 function markProblemCompleted(problemId, language, xp) {
   const data = getStudentData();
   if (!data.completed) data.completed = {};
 
-  const wasAlreadyCompleted = Boolean(data.completed[problemId]);
-  data.completed[problemId] = {
+  const targetLang = language || "python";
+  const key = `${problemId}:${targetLang}`;
+  const wasAlreadyCompleted = Boolean(data.completed[key]);
+
+  data.completed[key] = {
+    problemId: problemId,
+    language: targetLang,
     completedAt: new Date().toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     }),
-    language: language || "python",
-    xp: xp || 50
+    xp: typeof xp === "number" ? xp : 50
   };
 
   saveStudentData(data);
@@ -59,25 +181,71 @@ function markProblemCompleted(problemId, language, xp) {
   return !wasAlreadyCompleted;
 }
 
-function getCompletedCount() {
+/**
+ * Count of distinct unique problems solved in at least one language.
+ */
+function getUniqueCompletedCount() {
+  const data = getStudentData();
+  const uniqueSet = new Set();
+  for (const item of Object.values(data.completed || {})) {
+    if (item && item.problemId) {
+      uniqueSet.add(item.problemId);
+    }
+  }
+  return uniqueSet.size;
+}
+
+/**
+ * Count of problems solved in a specific language.
+ */
+function getLanguageCompletedCount(language) {
+  const data = getStudentData();
+  let count = 0;
+  for (const item of Object.values(data.completed || {})) {
+    if (item && item.language === language) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Total count of language-specific completions across all languages.
+ */
+function getTotalCompletedCount() {
   const data = getStudentData();
   return Object.keys(data.completed || {}).length;
 }
 
+/**
+ * Backward-compatible alias for getUniqueCompletedCount.
+ */
+function getCompletedCount() {
+  return getUniqueCompletedCount();
+}
+
+/**
+ * Sum of earned XP across all completed language milestones.
+ */
 function getTotalXP() {
   const data = getStudentData();
   let total = 0;
-  for (const id in data.completed || {}) {
-    total += data.completed[id].xp || 0;
+  for (const key in data.completed || {}) {
+    const item = data.completed[key];
+    total += (item && typeof item.xp === "number") ? item.xp : 0;
   }
   return total;
 }
 
+/**
+ * Scaling ranks gracefully up to 2400 XP while keeping existing 600 XP ranks intact.
+ */
 function getStudentRank(xp) {
-  if (xp >= 500) return { title: "Grandmaster Adventurer", icon: "👑" };
-  if (xp >= 300) return { title: "Code Sage", icon: "🧙‍♂️" };
-  if (xp >= 150) return { title: "Skilled Navigator", icon: "🧭" };
-  if (xp >= 60) return { title: "Apprentice Coder", icon: "⚔️" };
+  if (xp >= 1800) return { title: "Grandmaster Adventurer", icon: "👑" };
+  if (xp >= 1200) return { title: "Master Polyglot", icon: "🌐" };
+  if (xp >= 600) return { title: "Code Sage", icon: "🧙‍♂️" };
+  if (xp >= 300) return { title: "Skilled Navigator", icon: "🧭" };
+  if (xp >= 100) return { title: "Apprentice Coder", icon: "⚔️" };
   return { title: "Novice Explorer", icon: "🌱" };
 }
 
@@ -94,7 +262,18 @@ function getDraft(problemId, lang) {
 }
 
 function resetAllStudentData() {
-  localStorage.removeItem(STORAGE_KEY);
+  try {
+    const freshData = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      completed: {},
+      drafts: {},
+      activeLanguage: "python"
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
+  } catch (err) {
+    console.error("Error resetting student data:", err);
+    localStorage.removeItem(STORAGE_KEY);
+  }
   updateNavXPBadge();
 }
 
@@ -152,10 +331,19 @@ function initHomePage() {
 
   const allProblems = getAllProblems();
 
-  // Update hero stats
-  if (statTotal) statTotal.textContent = allProblems.length;
-  if (statCompleted) statCompleted.textContent = getCompletedCount();
-  if (statXP) statXP.textContent = getTotalXP();
+  function updateHeroStats() {
+    if (statTotal) statTotal.textContent = allProblems.length;
+    if (statCompleted) {
+      if (currentLang === "all") {
+        statCompleted.textContent = getUniqueCompletedCount();
+      } else {
+        statCompleted.textContent = `${getLanguageCompletedCount(currentLang)} / ${allProblems.length}`;
+      }
+    }
+    if (statXP) statXP.textContent = getTotalXP();
+  }
+
+  updateHeroStats();
 
   function renderCards() {
     if (!grid) return;
@@ -196,12 +384,26 @@ function initHomePage() {
     }
 
     filtered.forEach(prob => {
-      const isDone = isProblemCompleted(prob.id);
+      const isDoneInTarget = currentLang === "all"
+        ? isProblemCompleted(prob.id)
+        : isProblemCompleted(prob.id, currentLang);
+      const solvedLangs = getCompletedLanguagesForProblem(prob.id);
+
       const card = document.createElement("div");
       card.className = "problem-card";
 
       const difficultyClass = prob.difficulty.toLowerCase() === "easy" ? "easy" : "medium";
       const targetLang = currentLang === "all" ? "python" : currentLang;
+
+      const langBadges = [
+        { key: "python", label: "Python", icon: "🐍" },
+        { key: "javascript", label: "JS", icon: "⚡" },
+        { key: "java", label: "Java", icon: "☕" },
+        { key: "cpp", label: "C++", icon: "⚙️" }
+      ].map(l => {
+        const isSolved = solvedLangs.includes(l.key);
+        return `<span class="lang-icon-badge" title="${l.label}${isSolved ? ' (Solved)' : ''}">${l.icon} ${l.label}${isSolved ? ' ✓' : ''}</span>`;
+      }).join(' ');
 
       card.innerHTML = `
         <div class="problem-card-top">
@@ -212,17 +414,14 @@ function initHomePage() {
         <p class="problem-card-desc">${prob.summary}</p>
         
         <div class="languages-supported">
-          <span class="lang-icon-badge" title="Python">🐍 Python</span>
-          <span class="lang-icon-badge" title="JavaScript">⚡ JS</span>
-          <span class="lang-icon-badge" title="Java">☕ Java</span>
-          <span class="lang-icon-badge" title="C++">⚙️ C++</span>
+          ${langBadges}
         </div>
 
         <div class="problem-card-footer">
           <span class="xp-indicator">⚡ +${prob.xp} XP</span>
-          ${isDone ? `<span class="card-status-badge">✓ Solved</span>` : ''}
+          ${isDoneInTarget ? `<span class="card-status-badge">✓ Solved</span>` : ''}
           <a href="problem.html?id=${prob.id}&lang=${targetLang}" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem;">
-            ${isDone ? 'Practice Again →' : 'Solve Quest →'}
+            ${isDoneInTarget ? 'Practice Again →' : 'Solve Quest →'}
           </a>
         </div>
       `;
@@ -237,6 +436,7 @@ function initHomePage() {
         langTabsContainer.querySelectorAll(".lang-tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         currentLang = tab.getAttribute("data-lang");
+        updateHeroStats();
         renderCards();
       });
     });
@@ -884,7 +1084,7 @@ function initProblemPage() {
 
     // Sync Submit button state
     if (submitBtn) {
-      if (isProblemCompleted(problem.id)) {
+      if (isProblemCompleted(problem.id, lang)) {
         submitBtn.innerHTML = `<span>✓ Completed</span>`;
         submitBtn.classList.remove("btn-primary");
         submitBtn.classList.add("btn-success");
@@ -1289,9 +1489,9 @@ function initProblemPage() {
         const isNew = markProblemCompleted(problem.id, "javascript", problem.xp);
 
         if (isNew) {
-          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+          showToast(`🎉 Quest Completed in JavaScript! You earned +${problem.xp} XP!`, "success");
         } else {
-          showToast(`⭐ Quest updated in your learning record!`, "info");
+          showToast(`⭐ JavaScript solution updated in your learning record!`, "info");
         }
 
         submitBtn.innerHTML = `<span>✓ Completed</span>`;
@@ -1334,9 +1534,9 @@ function initProblemPage() {
         const isNew = markProblemCompleted(problem.id, "python", problem.xp);
 
         if (isNew) {
-          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+          showToast(`🎉 Quest Completed in Python! You earned +${problem.xp} XP!`, "success");
         } else {
-          showToast(`⭐ Quest updated in your learning record!`, "info");
+          showToast(`⭐ Python solution updated in your learning record!`, "info");
         }
 
         submitBtn.innerHTML = `<span>✓ Completed</span>`;
@@ -1354,14 +1554,15 @@ function initProblemPage() {
           }, 1200);
         }
       } else {
-        // Java, C++ existing untouched behavior
+        // Java and C++ simulation behavior
         const isNew = markProblemCompleted(problem.id, activeLang, problem.xp);
         renderTestCases(problem.testCases.map(() => "passed"));
 
+        const langDisplay = activeLang === "cpp" ? "C++" : "Java";
         if (isNew) {
-          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+          showToast(`🎉 Quest Completed in ${langDisplay}! You earned +${problem.xp} XP!`, "success");
         } else {
-          showToast(`⭐ Quest updated in your learning record!`, "info");
+          showToast(`⭐ ${langDisplay} solution updated in your learning record!`, "info");
         }
 
         const currentIndex = allProblems.findIndex(p => p.id === problem.id);
@@ -1394,9 +1595,11 @@ function initProgressPage() {
   const allProblems = getAllProblems();
 
   const totalXP = getTotalXP();
-  const solvedCount = getCompletedCount();
+  const uniqueSolved = getUniqueCompletedCount();
+  const totalCompletions = getTotalCompletedCount();
   const totalCount = allProblems.length;
-  const completionPct = Math.round((solvedCount / totalCount) * 100);
+  const totalMilestones = totalCount * 4; // 8 problems * 4 languages = 32 milestones
+  const completionPct = Math.min(100, Math.round((totalCompletions / totalMilestones) * 100));
   const rank = getStudentRank(totalXP);
 
   // Update Hero Metrics
@@ -1409,7 +1612,7 @@ function initProgressPage() {
   if (heroRankTitle) heroRankTitle.textContent = rank.title;
   if (heroRankIcon) heroRankIcon.textContent = rank.icon;
   if (statXPVal) statXPVal.textContent = totalXP;
-  if (statSolvedVal) statSolvedVal.textContent = `${solvedCount} / ${totalCount}`;
+  if (statSolvedVal) statSolvedVal.textContent = `${uniqueSolved} / ${totalCount}`;
   if (statRateVal) statRateVal.textContent = `${completionPct}%`;
 
   // Language Breakdown Progress
@@ -1419,14 +1622,8 @@ function initProgressPage() {
     const languages = getAvailableLanguages();
 
     languages.forEach(lang => {
-      // Count problems solved in this language
-      let count = 0;
-      for (const id in studentData.completed || {}) {
-        if (studentData.completed[id].language === lang.key) {
-          count++;
-        }
-      }
-
+      // Count problems solved in this specific language
+      const count = getLanguageCompletedCount(lang.key);
       const langPct = Math.min(100, Math.round((count / totalCount) * 100));
 
       const card = document.createElement("div");
@@ -1434,7 +1631,7 @@ function initProgressPage() {
       card.innerHTML = `
         <div class="lang-progress-header">
           <span class="lang-name-icon">${lang.icon} ${lang.label}</span>
-          <span style="font-weight: 700; color: #38bdf8;">${count} Solved</span>
+          <span style="font-weight: 700; color: #38bdf8;">${count} / ${totalCount} Solved</span>
         </div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" style="width: ${langPct}%"></div>
@@ -1451,20 +1648,25 @@ function initProgressPage() {
   // Render Achievements
   const achievementsGrid = document.getElementById("achievements-grid");
   if (achievementsGrid) {
+    const distinctLanguages = new Set();
+    for (const item of Object.values(studentData.completed || {})) {
+      if (item && item.language) distinctLanguages.add(item.language);
+    }
+
     const achievements = [
       {
         id: "first-step",
         title: "First Code Quest",
         desc: "Solve your very first programming challenge",
         icon: "🌱",
-        unlocked: solvedCount >= 1
+        unlocked: uniqueSolved >= 1
       },
       {
         id: "three-quests",
         title: "Problem Solver",
         desc: "Successfully complete 3 coding quests",
         icon: "⚡",
-        unlocked: solvedCount >= 3
+        unlocked: uniqueSolved >= 3
       },
       {
         id: "century-xp",
@@ -1476,16 +1678,16 @@ function initProgressPage() {
       {
         id: "polyglot",
         title: "Language Explorer",
-        desc: "Practice with multiple languages",
+        desc: "Complete challenges in multiple programming languages",
         icon: "🌐",
-        unlocked: Object.values(studentData.completed || {}).some(c => c.language !== "python") && solvedCount >= 2
+        unlocked: distinctLanguages.size >= 2
       },
       {
         id: "perfectionist",
         title: "Master Adventurer",
         desc: "Complete 6 or more coding quests",
         icon: "🏆",
-        unlocked: solvedCount >= 6
+        unlocked: uniqueSolved >= 6
       }
     ];
 
@@ -1506,13 +1708,13 @@ function initProgressPage() {
   const emptyState = document.getElementById("history-empty-state");
 
   if (historyTableBody) {
-    const completedList = Object.entries(studentData.completed || {});
+    const completedList = Object.values(studentData.completed || {});
     if (completedList.length === 0) {
       if (emptyState) emptyState.style.display = "block";
     } else {
       if (emptyState) emptyState.style.display = "none";
-      historyTableBody.innerHTML = completedList.map(([id, info]) => {
-        const prob = getProblemById(id);
+      historyTableBody.innerHTML = completedList.map(info => {
+        const prob = getProblemById(info.problemId);
         const langObj = getAvailableLanguages().find(l => l.key === info.language) || { label: info.language, icon: "💻" };
         return `
           <tr>
