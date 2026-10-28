@@ -1001,6 +1001,30 @@ textarea {
   border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
+.status-failed {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.status-error {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.test-case-error-msg {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #fb7185;
+  font-family: var(--font-mono);
+  background: rgba(244, 63, 94, 0.08);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid #f43f5e;
+  line-height: 1.5;
+}
+
 .console-logs-output {
   font-family: var(--font-mono);
   font-size: 0.85rem;

@@ -42,7 +42,7 @@ function isProblemCompleted(problemId) {
 function markProblemCompleted(problemId, language, xp) {
   const data = getStudentData();
   if (!data.completed) data.completed = {};
-  
+
   const wasAlreadyCompleted = Boolean(data.completed[problemId]);
   data.completed[problemId] = {
     completedAt: new Date().toLocaleDateString(undefined, {
@@ -53,7 +53,7 @@ function markProblemCompleted(problemId, language, xp) {
     language: language || "python",
     xp: xp || 50
   };
-  
+
   saveStudentData(data);
   updateNavXPBadge();
   return !wasAlreadyCompleted;
@@ -199,7 +199,7 @@ function initHomePage() {
       const isDone = isProblemCompleted(prob.id);
       const card = document.createElement("div");
       card.className = "problem-card";
-      
+
       const difficultyClass = prob.difficulty.toLowerCase() === "easy" ? "easy" : "medium";
       const targetLang = currentLang === "all" ? "python" : currentLang;
 
@@ -258,6 +258,498 @@ function initHomePage() {
   }
 
   renderCards();
+}
+
+// -----------------------------------------------------------------------------
+// JavaScript Sandbox Test Runner (Isolated Web Worker)
+// -----------------------------------------------------------------------------
+function formatValueForDisplay(val) {
+  if (val === undefined) return "undefined";
+  if (val === null) return "null";
+  if (typeof val === "string") return `"${val}"`;
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val);
+    } catch (_) {
+      return String(val);
+    }
+  }
+  return String(val);
+}
+
+function escapeHtml(str) {
+  if (typeof str !== "string") str = String(str);
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Safely executes JavaScript code inside an isolated Web Worker sandbox.
+ * Returns a Promise that resolves to:
+ * {
+ *   workerStarted: boolean,
+ *   success: boolean,
+ *   allPassed: boolean,
+ *   results: Array<{ status, expected, actual, error, duration }>,
+ *   logs: string[],
+ *   error?: string
+ * }
+ */
+function runJavaScriptInWorker(code, entryPoint, testCases, timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    // Check Web Worker support
+    if (typeof Worker === "undefined" || typeof Blob === "undefined" || typeof URL === "undefined") {
+      resolve({
+        workerStarted: false,
+        success: false,
+        allPassed: false,
+        error: "Web Workers are not supported in this browser environment.",
+        logs: [],
+        results: testCases.map(tc => ({
+          status: "error",
+          error: "Web Workers unsupported"
+        }))
+      });
+      return;
+    }
+
+    const workerScript = `
+      self.onmessage = function(e) {
+      const { code, entryPoint, testCases } = e.data;
+        const logs = [];
+
+        // Intercept console.log inside the isolated worker thread
+        console.log = function(...args) {
+          logs.push(args.map(a => {
+            if (typeof a === 'object') {
+              try { return JSON.stringify(a); } catch (_) { return String(a); }
+            }
+            return String(a);
+          }).join(' '));
+        };
+
+        try {
+          // Validate compilation and entry point existence before running the test suite
+          const factorySrc = code + '\\n return (typeof ' + entryPoint + ' === "function" ? ' + entryPoint + ' : null);';
+          let initialCheckFn;
+          try {
+            initialCheckFn = new Function(factorySrc)();
+          } catch (compErr) {
+            self.postMessage({
+              success: false,
+              allPassed: false,
+              error: compErr && compErr.message ? compErr.message : String(compErr),
+              logs: logs,
+              results: testCases.map(tc => ({
+                status: "error",
+                error: compErr && compErr.message ? compErr.message : String(compErr)
+              }))
+            });
+            return;
+          }
+
+          if (!initialCheckFn) {
+            self.postMessage({
+              success: false,
+              allPassed: false,
+              error: "Function '" + entryPoint + "' was not found or is not defined.",
+              logs: logs,
+              results: testCases.map(tc => ({
+                status: "failed",
+                error: "Function '" + entryPoint + "' is not defined in your code."
+              }))
+            });
+            return;
+          }
+
+          const results = [];
+          let allPassed = true;
+
+          for (let i = 0; i < testCases.length; i++) {
+            const tc = testCases[i];
+            const startTime = performance.now();
+            try {
+              // Create a fresh student-code execution instance for each test case
+              // so top-level variables and closure state cannot leak between tests
+              const freshFactory = new Function(factorySrc);
+              const fn = freshFactory();
+
+              if (!fn) {
+                throw new Error("Function '" + entryPoint + "' is not defined.");
+              }
+
+              // Deep clone arguments so student code in-place mutations cannot alter test definitions
+              const clonedArgs = typeof structuredClone === "function"
+                ? structuredClone(tc.args || [])
+                : JSON.parse(JSON.stringify(tc.args || []));
+
+              const actual = fn.apply(null, clonedArgs);
+              const duration = (performance.now() - startTime).toFixed(1);
+              const passed = deepEqual(actual, tc.expectedValue);
+              if (!passed) allPassed = false;
+              results.push({
+                status: passed ? "passed" : "failed",
+                actual: actual,
+                expected: tc.expectedValue,
+                duration: duration
+              });
+            } catch (err) {
+              allPassed = false;
+              results.push({
+                status: "error",
+                error: err && err.message ? err.message : String(err),
+                duration: (performance.now() - startTime).toFixed(1)
+              });
+            }
+          }
+
+          self.postMessage({
+            success: true,
+            allPassed: allPassed,
+            results: results,
+            logs: logs
+          });
+        } catch (err) {
+          self.postMessage({
+            success: false,
+            allPassed: false,
+            error: err && err.message ? err.message : String(err),
+            logs: logs,
+            results: testCases.map(tc => ({
+              status: "error",
+              error: err && err.message ? err.message : String(err)
+            }))
+          });
+        }
+      };
+
+      function deepEqual(a, b) {
+        if (typeof a === "number" && typeof b === "number" && isNaN(a) && isNaN(b)) return true;
+        if (a === b) return true;
+        if (typeof a !== typeof b) return false;
+        if (a === null || b === null) return a === b;
+        if (typeof a !== 'object') return false;
+        if (Array.isArray(a) !== Array.isArray(b)) return false;
+        if (Array.isArray(a)) {
+          if (a.length !== b.length) return false;
+          for (let i = 0; i < a.length; i++) {
+            if (!deepEqual(a[i], b[i])) return false;
+          }
+          return true;
+        }
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
+        if (keysA.length !== keysB.length) return false;
+        for (let k of keysA) {
+          if (!keysB.includes(k) || !deepEqual(a[k], b[k])) return false;
+        }
+        return true;
+      }
+    `;
+
+    let blob;
+    let workerUrl;
+    let worker;
+
+    try {
+      blob = new Blob([workerScript], { type: "application/javascript" });
+      workerUrl = URL.createObjectURL(blob);
+      worker = new Worker(workerUrl);
+    } catch (err) {
+      if (workerUrl) URL.revokeObjectURL(workerUrl);
+      resolve({
+        workerStarted: false,
+        success: false,
+        allPassed: false,
+        error: "Secure Web Worker Sandbox could not start (" + (err.message || err) + "). Note: Some browsers restrict Web Workers over file:// URLs. Please run CodeQuest via a local web server (e.g. VS Code Live Server or 'npx serve') for secure execution.",
+        logs: [],
+        results: testCases.map(tc => ({
+          status: "error",
+          error: "Sandbox initialization error: Worker could not be started."
+        }))
+      });
+      return;
+    }
+
+    let settled = false;
+    const cleanup = () => {
+      if (worker) {
+        try { worker.terminate(); } catch (_) { }
+      }
+      if (workerUrl) {
+        try { URL.revokeObjectURL(workerUrl); } catch (_) { }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        resolve({
+          workerStarted: true,
+          success: false,
+          allPassed: false,
+          error: `Execution timed out (${timeoutMs}ms). Check for infinite loops or heavy operations.`,
+          logs: [],
+          results: testCases.map(tc => ({
+            status: "error",
+            error: `Execution timed out (${timeoutMs}ms)`
+          }))
+        });
+      }
+    }, timeoutMs);
+
+    worker.onmessage = function (e) {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve({
+          workerStarted: true,
+          ...e.data
+        });
+      }
+    };
+
+    worker.onerror = function (e) {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve({
+          workerStarted: true,
+          success: false,
+          allPassed: false,
+          error: e.message || "An uncaught runtime error occurred in the sandbox.",
+          logs: [],
+          results: testCases.map(tc => ({
+            status: "error",
+            error: e.message || "Sandbox runtime error"
+          }))
+        });
+      }
+    };
+
+    // Send payload to worker
+    worker.postMessage({
+      code: code,
+      entryPoint: entryPoint,
+      testCases: testCases
+    });
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Python Sandbox Test Runner (Isolated Pyodide Web Worker)
+// -----------------------------------------------------------------------------
+let pythonWorkerInstance = null;
+let pythonWorkerActiveRequest = null;
+
+/**
+ * Retrieves or lazily creates the singleton Python Web Worker instance.
+ */
+function getOrCreatePythonWorker() {
+  if (pythonWorkerInstance) {
+    return pythonWorkerInstance;
+  }
+
+  try {
+    pythonWorkerInstance = new Worker("js/python-worker.js");
+  } catch (err) {
+    console.error("Failed to create Python Web Worker:", err);
+    return null;
+  }
+
+  pythonWorkerInstance.onmessage = function (e) {
+    const data = e.data || {};
+    // Ignore standalone readiness probe messages
+    if (data.type === "init_complete") {
+      return;
+    }
+    // Route matching request
+    if (pythonWorkerActiveRequest && data.id === pythonWorkerActiveRequest.id) {
+      const { resolve, timer } = pythonWorkerActiveRequest;
+      clearTimeout(timer);
+      pythonWorkerActiveRequest = null;
+      resolve(data);
+    }
+  };
+
+  pythonWorkerInstance.onerror = function (e) {
+    console.error("Python worker error event:", e);
+    if (pythonWorkerActiveRequest) {
+      const { resolve, timer, testCases } = pythonWorkerActiveRequest;
+      clearTimeout(timer);
+      pythonWorkerActiveRequest = null;
+      terminatePythonWorker();
+      resolve({
+        workerStarted: true,
+        success: false,
+        allPassed: false,
+        error: e.message || "An uncaught runtime error occurred in the Python sandbox worker.",
+        logs: [],
+        duration: "0.0",
+        results: (testCases || []).map(tc => ({
+          status: "error",
+          error: e.message || "Python worker runtime error",
+          expected: tc.expectedValue
+        }))
+      });
+    } else {
+      terminatePythonWorker();
+    }
+  };
+
+  return pythonWorkerInstance;
+}
+
+/**
+ * Terminates the active Python Web Worker and clears its state.
+ */
+function terminatePythonWorker() {
+  if (pythonWorkerInstance) {
+    try {
+      pythonWorkerInstance.terminate();
+    } catch (_) { }
+    pythonWorkerInstance = null;
+  }
+}
+
+// Ensure worker cleanup on page teardown
+window.addEventListener("beforeunload", terminatePythonWorker);
+
+/**
+ * Triggers background pre-warming of the Pyodide runtime to reduce cold-start latency.
+ */
+function prewarmPythonWorker() {
+  const worker = getOrCreatePythonWorker();
+  if (worker && !pythonWorkerActiveRequest) {
+    try {
+      worker.postMessage({ type: "init" });
+    } catch (_) { }
+  }
+}
+
+/**
+ * Safely executes Python 3 code inside the isolated Pyodide Web Worker sandbox.
+ */
+function runPythonInWorker(code, entryPoint, testCases, timeoutMs = 15000) {
+  return new Promise((resolve) => {
+    // Check Web Worker support
+    if (typeof Worker === "undefined") {
+      resolve({
+        workerStarted: false,
+        success: false,
+        allPassed: false,
+        error: "Web Workers are not supported in this browser environment.",
+        logs: [],
+        duration: "0.0",
+        results: (testCases || []).map(tc => ({
+          status: "error",
+          error: "Web Workers unsupported",
+          expected: tc.expectedValue
+        }))
+      });
+      return;
+    }
+
+    // Abort and recreate if a request was already in flight
+    if (pythonWorkerActiveRequest) {
+      clearTimeout(pythonWorkerActiveRequest.timer);
+      pythonWorkerActiveRequest.resolve({
+        workerStarted: true,
+        success: false,
+        allPassed: false,
+        error: "Execution superseded by a new test run.",
+        logs: [],
+        duration: "0.0",
+        results: (pythonWorkerActiveRequest.testCases || []).map(tc => ({
+          status: "error",
+          error: "Superseded",
+          expected: tc.expectedValue
+        }))
+      });
+      pythonWorkerActiveRequest = null;
+      terminatePythonWorker();
+    }
+
+    const worker = getOrCreatePythonWorker();
+    if (!worker) {
+      resolve({
+        workerStarted: false,
+        success: false,
+        allPassed: false,
+        error: "Python Web Worker Sandbox could not start. Note: Some browsers restrict Web Workers over file:// URLs. Please run CodeQuest via a local web server (e.g. VS Code Live Server or 'npx serve') for secure execution.",
+        logs: [],
+        duration: "0.0",
+        results: (testCases || []).map(tc => ({
+          status: "error",
+          error: "Sandbox initialization error: Worker could not be started.",
+          expected: tc.expectedValue
+        }))
+      });
+      return;
+    }
+
+    const requestId = "py_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+
+    const timer = setTimeout(() => {
+      if (pythonWorkerActiveRequest && pythonWorkerActiveRequest.id === requestId) {
+        pythonWorkerActiveRequest = null;
+        terminatePythonWorker();
+        resolve({
+          workerStarted: true,
+          success: false,
+          allPassed: false,
+          error: `Execution timed out (${timeoutMs}ms). Check for infinite loops or heavy operations.`,
+          logs: [],
+          duration: (timeoutMs / 1000).toFixed(1),
+          results: (testCases || []).map(tc => ({
+            status: "error",
+            error: `Execution timed out (${timeoutMs}ms)`,
+            expected: tc.expectedValue
+          }))
+        });
+      }
+    }, timeoutMs);
+
+    pythonWorkerActiveRequest = {
+      id: requestId,
+      resolve: resolve,
+      timer: timer,
+      testCases: testCases
+    };
+
+    try {
+      worker.postMessage({
+        id: requestId,
+        code: code,
+        entryPoint: entryPoint,
+        testCases: testCases
+      });
+    } catch (postErr) {
+      clearTimeout(timer);
+      pythonWorkerActiveRequest = null;
+      terminatePythonWorker();
+      resolve({
+        workerStarted: false,
+        success: false,
+        allPassed: false,
+        error: "Failed to dispatch payload to Python worker: " + (postErr.message || postErr),
+        logs: [],
+        duration: "0.0",
+        results: (testCases || []).map(tc => ({
+          status: "error",
+          error: "PostMessage error",
+          expected: tc.expectedValue
+        }))
+      });
+    }
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -372,6 +864,11 @@ function initProblemPage() {
       codeEditor.value = savedDraft || starter;
     }
 
+    // Pre-warm Python Web Worker in background when Python is active
+    if (lang === "python") {
+      prewarmPythonWorker();
+    }
+
     // Update active tab buttons
     langTabs.forEach(btn => {
       if (btn.getAttribute("data-lang") === lang) {
@@ -384,6 +881,19 @@ function initProblemPage() {
     // Update URL parameter without reload
     const newUrl = `${window.location.pathname}?id=${problem.id}&lang=${lang}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
+
+    // Sync Submit button state
+    if (submitBtn) {
+      if (isProblemCompleted(problem.id)) {
+        submitBtn.innerHTML = `<span>✓ Completed</span>`;
+        submitBtn.classList.remove("btn-primary");
+        submitBtn.classList.add("btn-success");
+      } else {
+        submitBtn.innerHTML = `<span>🚀</span> Submit Solution`;
+        submitBtn.classList.add("btn-primary");
+        submitBtn.classList.remove("btn-success");
+      }
+    }
   }
 
   // Handle Tab Switching
@@ -400,7 +910,7 @@ function initProblemPage() {
 
   // Enable Tab Key Indentation in Textarea
   if (codeEditor) {
-    codeEditor.addEventListener("keydown", function(e) {
+    codeEditor.addEventListener("keydown", function (e) {
       if (e.key === "Tab") {
         e.preventDefault();
         const start = this.selectionStart;
@@ -411,9 +921,14 @@ function initProblemPage() {
       }
     });
 
-    // Auto save draft on change
-    codeEditor.addEventListener("input", function() {
+    // Auto save draft on change and reset submit button if previously completed
+    codeEditor.addEventListener("input", function () {
       saveDraft(problem.id, activeLang, this.value);
+      if (submitBtn && submitBtn.classList.contains("btn-success")) {
+        submitBtn.innerHTML = `<span>🚀</span> Submit Solution`;
+        submitBtn.classList.add("btn-primary");
+        submitBtn.classList.remove("btn-success");
+      }
     });
   }
 
@@ -478,23 +993,48 @@ function initProblemPage() {
     testCasesView.innerHTML = `
       <div class="test-cases-list">
         ${problem.testCases.map((tc, idx) => {
-          const status = statusList[idx] || "pending";
-          const statusPill = status === "passed"
-            ? `<span class="test-status-pill status-passed">✓ Passed</span>`
-            : status === "running"
-            ? `<span class="test-status-pill status-pending">⏳ Testing...</span>`
-            : `<span class="test-status-pill status-pending">Pending</span>`;
+      const item = statusList[idx];
+      const status = (typeof item === "object" && item !== null) ? item.status : (item || "pending");
 
-          return `
+      let statusPill = "";
+      let errorDetails = "";
+
+      if (status === "passed") {
+        const dur = item && item.duration ? ` (${item.duration}ms)` : "";
+        statusPill = `<span class="test-status-pill status-passed">✓ Passed${dur}</span>`;
+      } else if (status === "failed") {
+        statusPill = `<span class="test-status-pill status-failed">✗ Failed</span>`;
+        if (item && item.expected !== undefined && item.actual !== undefined) {
+          errorDetails = `
+                <div class="test-case-error-msg">
+                  <strong>Expected:</strong> <code>${escapeHtml(formatValueForDisplay(item.expected))}</code><br>
+                  <strong>Received:</strong> <code>${escapeHtml(formatValueForDisplay(item.actual))}</code>
+                </div>
+              `;
+        } else if (item && item.error) {
+          errorDetails = `<div class="test-case-error-msg"><strong>Detail:</strong> ${escapeHtml(item.error)}</div>`;
+        }
+      } else if (status === "error") {
+        statusPill = `<span class="test-status-pill status-error">⚠ Error</span>`;
+        const errMsg = item && item.error ? item.error : "Runtime Error";
+        errorDetails = `<div class="test-case-error-msg"><strong>Error:</strong> ${escapeHtml(errMsg)}</div>`;
+      } else if (status === "running") {
+        statusPill = `<span class="test-status-pill status-pending">⏳ Testing...</span>`;
+      } else {
+        statusPill = `<span class="test-status-pill status-pending">Pending</span>`;
+      }
+
+      return `
             <div class="test-case-row">
-              <div class="test-case-info">
+              <div class="test-case-info" style="flex: 1; padding-right: 1rem;">
                 <span class="test-case-title">Test ${idx + 1}: ${tc.description}</span>
                 <span class="test-case-io">Input: <code>${tc.input}</code> | Expected: <code>${tc.expected}</code></span>
+                ${errorDetails}
               </div>
-              <div>${statusPill}</div>
+              <div style="flex-shrink: 0;">${statusPill}</div>
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     `;
   }
@@ -518,28 +1058,195 @@ function initProblemPage() {
     `;
   }
 
-  // Run Test Cases Action (Simulated Educational Evaluation)
+  // Real Test Suite Runner for JavaScript
+  async function runJavaScriptTestSuite() {
+    const code = codeEditor ? codeEditor.value : "";
+    const entryPoint = problem.jsEntry || "sayHello";
+
+    // Switch to test cases view
+    consoleTabs.forEach(t => t.classList.remove("active"));
+    const testTab = document.querySelector('[data-tab="cases"]');
+    if (testTab) testTab.classList.add("active");
+    if (testCasesView) testCasesView.style.display = "block";
+    if (consoleLogsView) consoleLogsView.style.display = "none";
+    if (explanationView) explanationView.style.display = "none";
+
+    renderTestCases(problem.testCases.map(() => "running"));
+
+    const evaluation = await runJavaScriptInWorker(code, entryPoint, problem.testCases);
+    renderTestCases(evaluation.results);
+
+    // Update Console Logs Output
+    if (consoleLogsView) {
+      const now = new Date().toLocaleTimeString();
+      let logLines = [];
+      logLines.push(`[${now}] Target Environment: JAVASCRIPT (Isolated Web Worker Sandbox)`);
+      logLines.push(`[${now}] Target Entry Function: ${entryPoint}()`);
+      logLines.push(`[${now}] ----------------------------------------------------`);
+
+      if (evaluation.logs && evaluation.logs.length > 0) {
+        logLines.push(`[${now}] Student Console Output:`);
+        evaluation.logs.forEach(l => logLines.push(`  > ${l}`));
+        logLines.push(`[${now}] ----------------------------------------------------`);
+      }
+
+      if (evaluation.error && (!evaluation.results || evaluation.results.length === 0 || !evaluation.workerStarted)) {
+        logLines.push(`[${now}] Sandbox Notice: ${evaluation.error}`);
+      } else {
+        evaluation.results.forEach((res, i) => {
+          const desc = problem.testCases[i] ? problem.testCases[i].description : `Test ${i + 1}`;
+          if (res.status === "passed") {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): PASSED (${res.duration}ms)`);
+          } else if (res.status === "failed") {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): FAILED - Expected ${formatValueForDisplay(res.expected)}, Received ${formatValueForDisplay(res.actual)}`);
+          } else {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): ERROR - ${res.error || 'Execution failed'}`);
+          }
+        });
+      }
+
+      logLines.push(`[${now}] ----------------------------------------------------`);
+      const passedCount = evaluation.results ? evaluation.results.filter(r => r.status === "passed").length : 0;
+      const totalCount = problem.testCases.length;
+      logLines.push(`[${now}] Status: ${passedCount}/${totalCount} test cases passed.`);
+
+      if (evaluation.allPassed) {
+        logLines.push(`[${now}] Success! Click "Submit Solution" to complete the quest and claim +${problem.xp} XP!`);
+      } else {
+        logLines.push(`[${now}] Keep going! Fix any failing tests or syntax issues and run tests again.`);
+      }
+
+      consoleLogsView.innerHTML = `<div class="console-logs-output">${escapeHtml(logLines.join('\n'))}</div>`;
+    }
+
+    return evaluation;
+  }
+
+  // Real Test Suite Runner for Python 3 (Pyodide Web Worker)
+  async function runPythonTestSuite() {
+    const code = codeEditor ? codeEditor.value : "";
+    const entryPoint = problem.pythonEntry || "say_hello";
+
+    // Switch to test cases view
+    consoleTabs.forEach(t => t.classList.remove("active"));
+    const testTab = document.querySelector('[data-tab="cases"]');
+    if (testTab) testTab.classList.add("active");
+    if (testCasesView) testCasesView.style.display = "block";
+    if (consoleLogsView) consoleLogsView.style.display = "none";
+    if (explanationView) explanationView.style.display = "none";
+
+    renderTestCases((problem.testCases || []).map(() => "running"));
+
+    const evaluation = await runPythonInWorker(code, entryPoint, problem.testCases || []);
+    renderTestCases(evaluation.results);
+
+    // Update Console Logs Output
+    if (consoleLogsView) {
+      const now = new Date().toLocaleTimeString();
+      let logLines = [];
+      logLines.push(`[${now}] Target Environment: PYTHON 3 (Pyodide WebAssembly Sandbox)`);
+      logLines.push(`[${now}] Target Entry Function: ${entryPoint}()`);
+      logLines.push(`[${now}] ----------------------------------------------------`);
+
+      if (evaluation.logs && evaluation.logs.length > 0) {
+        logLines.push(`[${now}] Student Console Output:`);
+        evaluation.logs.forEach(l => logLines.push(`  > ${l}`));
+        logLines.push(`[${now}] ----------------------------------------------------`);
+      }
+
+      if (evaluation.error && (!evaluation.results || evaluation.results.length === 0 || !evaluation.workerStarted || !evaluation.success)) {
+        logLines.push(`[${now}] Python Diagnostic / Error:`);
+        const errLines = String(evaluation.error).split('\n');
+        errLines.forEach(el => logLines.push(`  ${el}`));
+        logLines.push(`[${now}] ----------------------------------------------------`);
+      }
+
+      if (evaluation.results && evaluation.results.length > 0) {
+        evaluation.results.forEach((res, i) => {
+          const desc = problem.testCases[i] ? problem.testCases[i].description : `Test ${i + 1}`;
+          if (res.status === "passed") {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): PASSED (${res.duration}ms)`);
+          } else if (res.status === "failed") {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): FAILED - Expected ${formatValueForDisplay(res.expected)}, Received ${formatValueForDisplay(res.actual)}`);
+          } else {
+            logLines.push(`[${now}] Test ${i + 1} (${desc}): ERROR - ${res.error || 'Execution failed'}`);
+          }
+        });
+      }
+
+      logLines.push(`[${now}] ----------------------------------------------------`);
+      const passedCount = evaluation.results ? evaluation.results.filter(r => r.status === "passed").length : 0;
+      const totalCount = (problem.testCases || []).length;
+      logLines.push(`[${now}] Status: ${passedCount}/${totalCount} test cases passed.`);
+
+      if (evaluation.allPassed && totalCount > 0) {
+        logLines.push(`[${now}] Success! Click "Submit Solution" to complete the quest and claim +${problem.xp} XP!`);
+      } else {
+        logLines.push(`[${now}] Keep going! Fix any failing tests or syntax issues and run tests again.`);
+      }
+
+      consoleLogsView.innerHTML = `<div class="console-logs-output">${escapeHtml(logLines.join('\n'))}</div>`;
+    }
+
+    return evaluation;
+  }
+
+  // Run Test Cases Action
   if (runBtn) {
-    runBtn.addEventListener("click", () => {
-      // Switch to test cases tab
-      consoleTabs.forEach(t => t.classList.remove("active"));
-      const testTab = document.querySelector('[data-tab="cases"]');
-      if (testTab) testTab.classList.add("active");
-      if (testCasesView) testCasesView.style.display = "block";
-      if (consoleLogsView) consoleLogsView.style.display = "none";
-      if (explanationView) explanationView.style.display = "none";
+    runBtn.addEventListener("click", async () => {
+      if (activeLang === "javascript") {
+        runBtn.disabled = true;
+        const originalText = runBtn.innerHTML;
+        runBtn.innerHTML = `<span>⏳</span> Running...`;
 
-      // Show running state
-      renderTestCases(problem.testCases.map(() => "running"));
+        try {
+          const evaluation = await runJavaScriptTestSuite();
+          if (evaluation.allPassed) {
+            showToast("All test cases passed! Ready to submit.", "success");
+          } else if (evaluation.workerStarted === false) {
+            showToast(evaluation.error || "Sandbox could not be started.", "info");
+          } else {
+            showToast("Some test cases failed. Review the results below.", "info");
+          }
+        } finally {
+          runBtn.disabled = false;
+          runBtn.innerHTML = originalText;
+        }
+      } else if (activeLang === "python") {
+        runBtn.disabled = true;
+        const originalText = runBtn.innerHTML;
+        runBtn.innerHTML = `<span>⏳</span> Running...`;
 
-      setTimeout(() => {
-        // Mark simulated success
-        renderTestCases(problem.testCases.map(() => "passed"));
+        try {
+          const evaluation = await runPythonTestSuite();
+          if (evaluation.allPassed) {
+            showToast("All test cases passed! Ready to submit.", "success");
+          } else if (evaluation.workerStarted === false) {
+            showToast(evaluation.error || "Python runtime could not be started.", "info");
+          } else {
+            showToast("Some test cases failed. Review the results below.", "info");
+          }
+        } finally {
+          runBtn.disabled = false;
+          runBtn.innerHTML = originalText;
+        }
+      } else {
+        // Java and C++ (Untouched simulation behavior)
+        consoleTabs.forEach(t => t.classList.remove("active"));
+        const testTab = document.querySelector('[data-tab="cases"]');
+        if (testTab) testTab.classList.add("active");
+        if (testCasesView) testCasesView.style.display = "block";
+        if (consoleLogsView) consoleLogsView.style.display = "none";
+        if (explanationView) explanationView.style.display = "none";
 
-        // Log output to console tab
-        if (consoleLogsView) {
-          const now = new Date().toLocaleTimeString();
-          consoleLogsView.innerHTML = `
+        renderTestCases(problem.testCases.map(() => "running"));
+
+        setTimeout(() => {
+          renderTestCases(problem.testCases.map(() => "passed"));
+
+          if (consoleLogsView) {
+            const now = new Date().toLocaleTimeString();
+            consoleLogsView.innerHTML = `
 [${now}] Target Environment: ${activeLang.toUpperCase()}
 [${now}] Compiling test suite for "${problem.title}"...
 [${now}] Running Test 1: ${problem.testCases[0].description} -> PASSED (4ms)
@@ -548,41 +1255,129 @@ function initProblemPage() {
 [${now}] ----------------------------------------------------
 [${now}] Status: All ${problem.testCases.length} sample test cases passed!
 [${now}] Note: Click "Submit Solution" to complete the quest and claim your XP!
-          `.trim();
-        }
+            `.trim();
+          }
 
-        showToast("All sample test cases passed! Ready to submit.", "success");
-      }, 400);
+          showToast("All sample test cases passed! Ready to submit.", "success");
+        }, 400);
+      }
     });
   }
 
   // Submit Solution Action
   if (submitBtn) {
-    submitBtn.addEventListener("click", () => {
-      const isNew = markProblemCompleted(problem.id, activeLang, problem.xp);
-      renderTestCases(problem.testCases.map(() => "passed"));
+    submitBtn.addEventListener("click", async () => {
+      if (activeLang === "javascript") {
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = `<span>⏳</span> Verifying...`;
 
-      if (isNew) {
-        showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
-      } else {
-        showToast(`⭐ Quest updated in your learning record!`, "info");
-      }
+        let evaluation;
+        try {
+          evaluation = await runJavaScriptTestSuite();
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
 
-      // Automatically check next problem
-      const currentIndex = allProblems.findIndex(p => p.id === problem.id);
-      const nextProblem = allProblems[currentIndex + 1];
+        // Strictly enforce: ONLY award XP and complete when ALL genuine tests pass!
+        if (!evaluation || !evaluation.allPassed) {
+          showToast("❌ All test cases must pass before submitting!", "info");
+          return;
+        }
 
-      // Update button text or show completion state
-      submitBtn.innerHTML = `<span>✓ Completed</span>`;
-      submitBtn.classList.remove("btn-primary");
-      submitBtn.classList.add("btn-success");
+        const isNew = markProblemCompleted(problem.id, "javascript", problem.xp);
 
-      if (nextProblem) {
-        setTimeout(() => {
-          if (confirm(`Great job solving "${problem.title}"! Would you like to advance to the next quest: "${nextProblem.title}"?`)) {
-            window.location.href = `problem.html?id=${nextProblem.id}&lang=${activeLang}`;
+        if (isNew) {
+          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+        } else {
+          showToast(`⭐ Quest updated in your learning record!`, "info");
+        }
+
+        submitBtn.innerHTML = `<span>✓ Completed</span>`;
+        submitBtn.classList.remove("btn-primary");
+        submitBtn.classList.add("btn-success");
+
+        const currentIndex = allProblems.findIndex(p => p.id === problem.id);
+        const nextProblem = allProblems[currentIndex + 1];
+
+        if (nextProblem) {
+          setTimeout(() => {
+            if (confirm(`Great job solving "${problem.title}"! Would you like to advance to the next quest: "${nextProblem.title}"?`)) {
+              window.location.href = `problem.html?id=${nextProblem.id}&lang=${activeLang}`;
+            }
+          }, 1200);
+        }
+      } else if (activeLang === "python") {
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = `<span>⏳</span> Verifying...`;
+
+        let evaluation;
+        try {
+          evaluation = await runPythonTestSuite();
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+
+        // Strictly enforce: ONLY award XP and complete when ALL genuine tests pass!
+        if (!evaluation || !evaluation.allPassed || !problem.testCases || problem.testCases.length === 0) {
+          if (!problem.testCases || problem.testCases.length === 0) {
+            showToast("❌ No test cases found to evaluate this quest.", "info");
+          } else {
+            showToast("❌ All test cases must pass before submitting!", "info");
           }
-        }, 1200);
+          return;
+        }
+
+        const isNew = markProblemCompleted(problem.id, "python", problem.xp);
+
+        if (isNew) {
+          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+        } else {
+          showToast(`⭐ Quest updated in your learning record!`, "info");
+        }
+
+        submitBtn.innerHTML = `<span>✓ Completed</span>`;
+        submitBtn.classList.remove("btn-primary");
+        submitBtn.classList.add("btn-success");
+
+        const currentIndex = allProblems.findIndex(p => p.id === problem.id);
+        const nextProblem = allProblems[currentIndex + 1];
+
+        if (nextProblem) {
+          setTimeout(() => {
+            if (confirm(`Great job solving "${problem.title}"! Would you like to advance to the next quest: "${nextProblem.title}"?`)) {
+              window.location.href = `problem.html?id=${nextProblem.id}&lang=${activeLang}`;
+            }
+          }, 1200);
+        }
+      } else {
+        // Java, C++ existing untouched behavior
+        const isNew = markProblemCompleted(problem.id, activeLang, problem.xp);
+        renderTestCases(problem.testCases.map(() => "passed"));
+
+        if (isNew) {
+          showToast(`🎉 Quest Completed! You earned +${problem.xp} XP!`, "success");
+        } else {
+          showToast(`⭐ Quest updated in your learning record!`, "info");
+        }
+
+        const currentIndex = allProblems.findIndex(p => p.id === problem.id);
+        const nextProblem = allProblems[currentIndex + 1];
+
+        submitBtn.innerHTML = `<span>✓ Completed</span>`;
+        submitBtn.classList.remove("btn-primary");
+        submitBtn.classList.add("btn-success");
+
+        if (nextProblem) {
+          setTimeout(() => {
+            if (confirm(`Great job solving "${problem.title}"! Would you like to advance to the next quest: "${nextProblem.title}"?`)) {
+              window.location.href = `problem.html?id=${nextProblem.id}&lang=${activeLang}`;
+            }
+          }, 1200);
+        }
       }
     });
   }

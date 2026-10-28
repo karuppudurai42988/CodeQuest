@@ -11,15 +11,17 @@
  */
 
 const SAMPLE_PROBLEMS = [
-  {
-    id: "hello-world",
-    title: "Say Hello to the World",
-    difficulty: "Easy",
-    category: "Basics",
-    xp: 50,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Create your very first program that returns a warm greeting to start your coding journey.",
-    description: `
+    {
+        id: "hello-world",
+        title: "Say Hello to the World",
+        difficulty: "Easy",
+        category: "Basics",
+        xp: 50,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "sayHello",
+        pythonEntry: "say_hello",
+        summary: "Create your very first program that returns a warm greeting to start your coding journey.",
+        description: `
 Welcome to your first quest! In computer programming tradition, every coder begins by producing a friendly greeting.
 
 ### The Objective
@@ -29,8 +31,8 @@ Write a function \`sayHello(name)\` that accepts a student's name as a string an
 If no name is passed (or if the string is empty), it should return:
 \`"Hello, Adventurer! Welcome to CodeQuest."\`
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def say_hello(name=""):
     """
     Returns a personalized greeting message.
@@ -42,19 +44,14 @@ def say_hello(name=""):
 # Example check
 print(say_hello("Alex"))
 `,
-      javascript: `// JavaScript (ES6) Starter Code
+            javascript: `// JavaScript (ES6) Starter Code
 function sayHello(name = "") {
-  // Your code here
-  if (!name || name.trim() === "") {
-    return "Hello, Adventurer! Welcome to CodeQuest.";
-  }
-  return \`Hello, \${name}! Welcome to CodeQuest.\`;
+  // Your code here: Return "Hello, <name>! Welcome to CodeQuest."
+  // If name is empty, return "Hello, Adventurer! Welcome to CodeQuest."
+  return "";
 }
-
-// Example check
-console.log(sayHello("Alex"));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static String sayHello(String name) {
         // Your code here
@@ -69,7 +66,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <string>
 
@@ -86,52 +83,52 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: 'name = "Alex"',
+        sampleOutput: '"Hello, Alex! Welcome to CodeQuest."',
+        hints: [
+            "Check if the string is empty before constructing the response.",
+            "String interpolation or simple concatenation works wonders.",
+            "Pay close attention to spaces and punctuation: don't forget the exclamation mark and period!"
+        ],
+        concepts: ["Variables", "Functions", "String Concatenation", "Conditional Logic"],
+        testCases: [
+            { input: 'name = "Alex"', expected: '"Hello, Alex! Welcome to CodeQuest."', description: "Standard name input", args: ["Alex"], expectedValue: "Hello, Alex! Welcome to CodeQuest." },
+            { input: 'name = ""', expected: '"Hello, Adventurer! Welcome to CodeQuest."', description: "Empty string fallback", args: [""], expectedValue: "Hello, Adventurer! Welcome to CodeQuest." },
+            { input: 'name = "Maya"', expected: '"Hello, Maya! Welcome to CodeQuest."', description: "Alternate student name", args: ["Maya"], expectedValue: "Hello, Maya! Welcome to CodeQuest." }
+        ]
     },
-    sampleInput: 'name = "Alex"',
-    sampleOutput: '"Hello, Alex! Welcome to CodeQuest."',
-    hints: [
-      "Check if the string is empty before constructing the response.",
-      "String interpolation or simple concatenation works wonders.",
-      "Pay close attention to spaces and punctuation: don't forget the exclamation mark and period!"
-    ],
-    concepts: ["Variables", "Functions", "String Concatenation", "Conditional Logic"],
-    testCases: [
-      { input: 'name = "Alex"', expected: '"Hello, Alex! Welcome to CodeQuest."', description: "Standard name input" },
-      { input: 'name = ""', expected: '"Hello, Adventurer! Welcome to CodeQuest."', description: "Empty string fallback" },
-      { input: 'name = "Maya"', expected: '"Hello, Maya! Welcome to CodeQuest."', description: "Alternate student name" }
-    ]
-  },
-  {
-    id: "sum-two-numbers",
-    title: "Sum of Two Numbers",
-    difficulty: "Easy",
-    category: "Math & Arithmetic",
-    xp: 60,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Add two integers together to calculate their total sum.",
-    description: `
+    {
+        id: "sum-two-numbers",
+        title: "Sum of Two Numbers",
+        difficulty: "Easy",
+        category: "Math & Arithmetic",
+        xp: 60,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "addNumbers",
+        pythonEntry: "add_numbers",
+        summary: "Add two integers together to calculate their total sum.",
+        description: `
 Computers excel at high-speed calculation. Let's build a foundation for arithmetic calculations.
 
 ### The Objective
 Write a function \`addNumbers(a, b)\` that takes two numbers, adds them together, and returns the result.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def add_numbers(a: int, b: int) -> int:
     # Return the sum of a and b
     return a + b
 
 print(add_numbers(5, 7))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function addNumbers(a, b) {
-  // Return the sum of a and b
-  return a + b;
+  // Your code here: Return the sum of a and b
+  return 0;
 }
-
-console.log(addNumbers(5, 7));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static int addNumbers(int a, int b) {
         // Return the sum of a and b
@@ -143,7 +140,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 
 int addNumbers(int a, int b) {
@@ -156,36 +153,38 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: "a = 5, b = 7",
+        sampleOutput: "12",
+        hints: [
+            "Use the standard addition operator (+).",
+            "Ensure you return the result rather than just printing it."
+        ],
+        concepts: ["Numbers", "Return Types", "Arithmetic Operators"],
+        testCases: [
+            { input: "a = 5, b = 7", expected: "12", description: "Positive numbers", args: [5, 7], expectedValue: 12 },
+            { input: "a = -3, b = 10", expected: "7", description: "Negative and positive numbers", args: [-3, 10], expectedValue: 7 },
+            { input: "a = 0, b = 0", expected: "0", description: "Zero values", args: [0, 0], expectedValue: 0 }
+        ]
     },
-    sampleInput: "a = 5, b = 7",
-    sampleOutput: "12",
-    hints: [
-      "Use the standard addition operator (+).",
-      "Ensure you return the result rather than just printing it."
-    ],
-    concepts: ["Numbers", "Return Types", "Arithmetic Operators"],
-    testCases: [
-      { input: "a = 5, b = 7", expected: "12", description: "Positive numbers" },
-      { input: "a = -3, b = 10", expected: "7", description: "Negative and positive numbers" },
-      { input: "a = 0, b = 0", expected: "0", description: "Zero values" }
-    ]
-  },
-  {
-    id: "even-or-odd",
-    title: "Even or Odd Detector",
-    difficulty: "Easy",
-    category: "Conditionals",
-    xp: 75,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Determine whether a given number is Even or Odd using the modulus operator.",
-    description: `
+    {
+        id: "even-or-odd",
+        title: "Even or Odd Detector",
+        difficulty: "Easy",
+        category: "Conditionals",
+        xp: 75,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "checkEvenOrOdd",
+        pythonEntry: "check_even_or_odd",
+        summary: "Determine whether a given number is Even or Odd using the modulus operator.",
+        description: `
 In this quest, you will help our system sort numbers into two fundamental categories: Even or Odd.
 
 ### The Objective
 Write a function \`checkEvenOrOdd(n)\` that returns the string \`"Even"\` if the integer \`n\` is divisible by 2, and \`"Odd"\` otherwise.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def check_even_or_odd(n: int) -> str:
     # Use the modulus operator %
     if n % 2 == 0:
@@ -194,18 +193,13 @@ def check_even_or_odd(n: int) -> str:
 
 print(check_even_or_odd(8))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function checkEvenOrOdd(n) {
-  // Use remainder operator %
-  if (n % 2 === 0) {
-    return "Even";
-  }
-  return "Odd";
+  // Your code here: Return "Even" or "Odd"
+  return "";
 }
-
-console.log(checkEvenOrOdd(8));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static String checkEvenOrOdd(int n) {
         if (n % 2 == 0) {
@@ -219,7 +213,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <string>
 
@@ -235,52 +229,52 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: "n = 8",
+        sampleOutput: '"Even"',
+        hints: [
+            "The modulo operator (%) yields the remainder of division by 2.",
+            "If n % 2 equals 0, the number divides evenly."
+        ],
+        concepts: ["Modulo Operator", "If/Else Statements", "Boolean Logic"],
+        testCases: [
+            { input: "n = 8", expected: '"Even"', description: "Positive even number", args: [8], expectedValue: "Even" },
+            { input: "n = 13", expected: '"Odd"', description: "Positive odd number", args: [13], expectedValue: "Odd" },
+            { input: "n = 0", expected: '"Even"', description: "Zero is even", args: [0], expectedValue: "Even" }
+        ]
     },
-    sampleInput: "n = 8",
-    sampleOutput: '"Even"',
-    hints: [
-      "The modulo operator (%) yields the remainder of division by 2.",
-      "If n % 2 equals 0, the number divides evenly."
-    ],
-    concepts: ["Modulo Operator", "If/Else Statements", "Boolean Logic"],
-    testCases: [
-      { input: "n = 8", expected: '"Even"', description: "Positive even number" },
-      { input: "n = 13", expected: '"Odd"', description: "Positive odd number" },
-      { input: "n = 0", expected: '"Even"', description: "Zero is even" }
-    ]
-  },
-  {
-    id: "reverse-string",
-    title: "Reverse a String",
-    difficulty: "Easy",
-    category: "Strings",
-    xp: 80,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Flip a word or sentence backwards without losing any characters.",
-    description: `
+    {
+        id: "reverse-string",
+        title: "Reverse a String",
+        difficulty: "Easy",
+        category: "Strings",
+        xp: 80,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "reverseString",
+        pythonEntry: "reverse_string",
+        summary: "Flip a word or sentence backwards without losing any characters.",
+        description: `
 A classic interview question made easy for beginners! 
 
 ### The Objective
 Write a function \`reverseString(text)\` that accepts a string and returns it backwards.
 For example, \`"quest"\` becomes \`"tseuq"\`.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def reverse_string(text: str) -> str:
     # Tip: Python supports slice notation [::-1] or a reversed loop
     return text[::-1]
 
 print(reverse_string("quest"))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function reverseString(text) {
-  // Tip: Can split into characters, reverse array, and join back
-  return text.split('').reverse().join('');
+  // Your code here: Return the reversed string
+  return "";
 }
-
-console.log(reverseString("quest"));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static String reverseString(String text) {
         // Tip: StringBuilder has a built-in reverse() method
@@ -292,7 +286,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -308,37 +302,39 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: 'text = "quest"',
+        sampleOutput: '"tseuq"',
+        hints: [
+            "You can iterate from the last character back to the first.",
+            "Most languages provide built-in string or array reverse helpers.",
+            "Watch out for spaces and capitalization—preserve them as they are."
+        ],
+        concepts: ["String Manipulation", "Loops", "Indexing"],
+        testCases: [
+            { input: 'text = "quest"', expected: '"tseuq"', description: "Standard single word", args: ["quest"], expectedValue: "tseuq" },
+            { input: 'text = "Code"', expected: '"edoC"', description: "Word with uppercase character", args: ["Code"], expectedValue: "edoC" },
+            { input: 'text = "12345"', expected: '"54321"', description: "Numeric characters string", args: ["12345"], expectedValue: "54321" }
+        ]
     },
-    sampleInput: 'text = "quest"',
-    sampleOutput: '"tseuq"',
-    hints: [
-      "You can iterate from the last character back to the first.",
-      "Most languages provide built-in string or array reverse helpers.",
-      "Watch out for spaces and capitalization—preserve them as they are."
-    ],
-    concepts: ["String Manipulation", "Loops", "Indexing"],
-    testCases: [
-      { input: 'text = "quest"', expected: '"tseuq"', description: "Standard single word" },
-      { input: 'text = "Code"', expected: '"edoC"', description: "Word with uppercase character" },
-      { input: 'text = "12345"', expected: '"54321"', description: "Numeric characters string" }
-    ]
-  },
-  {
-    id: "find-maximum",
-    title: "Find the Maximum Element",
-    difficulty: "Medium",
-    category: "Arrays & Lists",
-    xp: 90,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Traverse a list or array of numbers and locate the largest value.",
-    description: `
+    {
+        id: "find-maximum",
+        title: "Find the Maximum Element",
+        difficulty: "Medium",
+        category: "Arrays & Lists",
+        xp: 90,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "findMax",
+        pythonEntry: "find_max",
+        summary: "Traverse a list or array of numbers and locate the largest value.",
+        description: `
 When handling datasets, you frequently need to identify peaks, high scores, or highest temperatures.
 
 ### The Objective
 Write a function \`findMax(numbers)\` that takes a list of integers and returns the highest number in that list.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def find_max(numbers: list[int]) -> int:
     # Initialize maximum with the first item or -infinity
     current_max = numbers[0]
@@ -349,21 +345,13 @@ def find_max(numbers: list[int]) -> int:
 
 print(find_max([3, 14, 7, 2, 9]))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function findMax(numbers) {
-  if (numbers.length === 0) return null;
-  let max = numbers[0];
-  for (let i = 1; i < numbers.length; i++) {
-    if (numbers[i] > max) {
-      max = numbers[i];
-    }
-  }
-  return max;
+  // Your code here: Return the highest number in the array
+  return 0;
 }
-
-console.log(findMax([3, 14, 7, 2, 9]));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static int findMax(int[] numbers) {
         int max = numbers[0];
@@ -381,7 +369,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <vector>
 
@@ -401,30 +389,32 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: "numbers = [3, 14, 7, 2, 9]",
+        sampleOutput: "14",
+        hints: [
+            "Start by assuming the first element is the largest.",
+            "Iterate through the rest of the array and update your max whenever you find a larger number.",
+            "Be careful when handling negative numbers!"
+        ],
+        concepts: ["Arrays", "Loops", "Variables", "Comparison"],
+        testCases: [
+            { input: "[3, 14, 7, 2, 9]", expected: "14", description: "Mixed positive numbers", args: [[3, 14, 7, 2, 9]], expectedValue: 14 },
+            { input: "[-5, -12, -2, -8]", expected: "-2", description: "All negative numbers", args: [[-5, -12, -2, -8]], expectedValue: -2 },
+            { input: "[42]", expected: "42", description: "Single-item array", args: [[42]], expectedValue: 42 }
+        ]
     },
-    sampleInput: "numbers = [3, 14, 7, 2, 9]",
-    sampleOutput: "14",
-    hints: [
-      "Start by assuming the first element is the largest.",
-      "Iterate through the rest of the array and update your max whenever you find a larger number.",
-      "Be careful when handling negative numbers!"
-    ],
-    concepts: ["Arrays", "Loops", "Variables", "Comparison"],
-    testCases: [
-      { input: "[3, 14, 7, 2, 9]", expected: "14", description: "Mixed positive numbers" },
-      { input: "[-5, -12, -2, -8]", expected: "-2", description: "All negative numbers" },
-      { input: "[42]", expected: "42", description: "Single-item array" }
-    ]
-  },
-  {
-    id: "fizz-buzz",
-    title: "The Classic FizzBuzz",
-    difficulty: "Medium",
-    category: "Conditionals & Loops",
-    xp: 100,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "The legendary developer screening problem: substitute multiples of 3 and 5 with fun words.",
-    description: `
+    {
+        id: "fizz-buzz",
+        title: "The Classic FizzBuzz",
+        difficulty: "Medium",
+        category: "Conditionals & Loops",
+        xp: 100,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "fizzBuzz",
+        pythonEntry: "fizz_buzz",
+        summary: "The legendary developer screening problem: substitute multiples of 3 and 5 with fun words.",
+        description: `
 FizzBuzz is one of the most famous coding exercises in history!
 
 ### The Objective
@@ -434,8 +424,8 @@ Write a function \`fizzBuzz(n)\` that generates an array/list of strings from 1 
 - For numbers which are multiples of BOTH 3 and 5, use \`"FizzBuzz"\`.
 - Otherwise, use the number as a string.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def fizz_buzz(n: int) -> list[str]:
     result = []
     for i in range(1, n + 1):
@@ -451,26 +441,13 @@ def fizz_buzz(n: int) -> list[str]:
 
 print(fizz_buzz(5))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function fizzBuzz(n) {
-  const result = [];
-  for (let i = 1; i <= n; i++) {
-    if (i % 15 === 0) {
-      result.push("FizzBuzz");
-    } else if (i % 3 === 0) {
-      result.push("Fizz");
-    } else if (i % 5 === 0) {
-      result.push("Buzz");
-    } else {
-      result.push(i.toString());
-    }
-  }
-  return result;
+  // Your code here: Return an array of strings from 1 to n following FizzBuzz rules
+  return [];
 }
-
-console.log(fizzBuzz(5));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 import java.util.ArrayList;
 import java.util.List;
 
@@ -496,7 +473,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <vector>
 #include <string>
@@ -524,52 +501,51 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: "n = 5",
+        sampleOutput: '["1", "2", "Fizz", "4", "Buzz"]',
+        hints: [
+            "Check for the combined condition (divisible by 15 or both 3 and 5) first!",
+            "If you check 3 or 5 first, numbers like 15 will match before FizzBuzz has a chance to execute."
+        ],
+        concepts: ["Modulus", "Order of Precedence", "Array Accumulation", "Type Casting"],
+        testCases: [
+            { input: "n = 5", expected: '["1", "2", "Fizz", "4", "Buzz"]', description: "First 5 numbers", args: [5], expectedValue: ["1", "2", "Fizz", "4", "Buzz"] },
+            { input: "n = 15", expected: '... ends with "FizzBuzz"', description: "Includes multiple of 3 and 5", args: [15], expectedValue: ["1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"] },
+            { input: "n = 1", expected: '["1"]', description: "Base edge case", args: [1], expectedValue: ["1"] }
+        ]
     },
-    sampleInput: "n = 5",
-    sampleOutput: '["1", "2", "Fizz", "4", "Buzz"]',
-    hints: [
-      "Check for the combined condition (divisible by 15 or both 3 and 5) first!",
-      "If you check 3 or 5 first, numbers like 15 will match before FizzBuzz has a chance to execute."
-    ],
-    concepts: ["Modulus", "Order of Precedence", "Array Accumulation", "Type Casting"],
-    testCases: [
-      { input: "n = 5", expected: '["1", "2", "Fizz", "4", "Buzz"]', description: "First 5 numbers" },
-      { input: "n = 15", expected: '... ends with "FizzBuzz"', description: "Includes multiple of 3 and 5" },
-      { input: "n = 1", expected: '["1"]', description: "Base edge case" }
-    ]
-  },
-  {
-    id: "palindrome-checker",
-    title: "Palindrome Checker",
-    difficulty: "Easy",
-    category: "Strings",
-    xp: 75,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Check if a word reads identically forwards and backwards (like racecar or madam).",
-    description: `
+    {
+        id: "palindrome-checker",
+        title: "Palindrome Checker",
+        difficulty: "Easy",
+        category: "Strings",
+        xp: 75,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "isPalindrome",
+        pythonEntry: "is_palindrome",
+        summary: "Check if a word reads identically forwards and backwards (like racecar or madam).",
+        description: `
 A palindrome is a word, phrase, or number that reads the same backward as forward.
 
 ### The Objective
 Write a function \`isPalindrome(word)\` that returns \`true\` (or \`True\` in Python) if the given string is a palindrome, and \`false\` otherwise. Ignore case sensitivity (e.g. \`"Racecar"\` is a valid palindrome).
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def is_palindrome(word: str) -> bool:
     clean = word.lower()
     return clean == clean[::-1]
 
 print(is_palindrome("Racecar"))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function isPalindrome(word) {
-  const clean = word.toLowerCase();
-  const reversed = clean.split('').reverse().join('');
-  return clean === reversed;
+  // Your code here: Return true if word is a palindrome, false otherwise
+  return false;
 }
-
-console.log(isPalindrome("Racecar"));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static boolean isPalindrome(String word) {
         String clean = word.toLowerCase();
@@ -582,7 +558,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -600,36 +576,38 @@ int main() {
     return 0;
 }
 `
+        },
+        sampleInput: 'word = "Racecar"',
+        sampleOutput: "true",
+        hints: [
+            "Convert the word to lowercase first to ensure comparison is case-insensitive.",
+            "Compare the original cleaned string to its reversed version."
+        ],
+        concepts: ["Case Conversion", "String Slicing", "Boolean Evaluation"],
+        testCases: [
+            { input: 'word = "Racecar"', expected: "true", description: "Mixed case palindrome", args: ["Racecar"], expectedValue: true },
+            { input: 'word = "hello"', expected: "false", description: "Non-palindrome word", args: ["hello"], expectedValue: false },
+            { input: 'word = "madam"', expected: "true", description: "Lowercase palindrome", args: ["madam"], expectedValue: true }
+        ]
     },
-    sampleInput: 'word = "Racecar"',
-    sampleOutput: "true",
-    hints: [
-      "Convert the word to lowercase first to ensure comparison is case-insensitive.",
-      "Compare the original cleaned string to its reversed version."
-    ],
-    concepts: ["Case Conversion", "String Slicing", "Boolean Evaluation"],
-    testCases: [
-      { input: 'word = "Racecar"', expected: "true", description: "Mixed case palindrome" },
-      { input: 'word = "hello"', expected: "false", description: "Non-palindrome word" },
-      { input: 'word = "madam"', expected: "true", description: "Lowercase palindrome" }
-    ]
-  },
-  {
-    id: "count-vowels",
-    title: "Count the Vowels",
-    difficulty: "Easy",
-    category: "Strings & Loops",
-    xp: 70,
-    languages: ["python", "javascript", "java", "cpp"],
-    summary: "Scan a text passage and count how many vowels (a, e, i, o, u) it contains.",
-    description: `
+    {
+        id: "count-vowels",
+        title: "Count the Vowels",
+        difficulty: "Easy",
+        category: "Strings & Loops",
+        xp: 70,
+        languages: ["python", "javascript", "java", "cpp"],
+        jsEntry: "countVowels",
+        pythonEntry: "count_vowels",
+        summary: "Scan a text passage and count how many vowels (a, e, i, o, u) it contains.",
+        description: `
 Vowels are the musical notes of language. Let's create an efficient vowel counter!
 
 ### The Objective
 Write a function \`countVowels(sentence)\` that returns the total count of vowels (\`a, e, i, o, u\`) present in the input string. The check should be case-insensitive.
     `,
-    starterCode: {
-      python: `# Python 3 Starter Code
+        starterCode: {
+            python: `# Python 3 Starter Code
 def count_vowels(sentence: str) -> int:
     vowels = "aeiouAEIOU"
     count = 0
@@ -640,21 +618,13 @@ def count_vowels(sentence: str) -> int:
 
 print(count_vowels("CodeQuest is awesome"))
 `,
-      javascript: `// JavaScript Starter Code
+            javascript: `// JavaScript Starter Code
 function countVowels(sentence) {
-  const vowels = "aeiouAEIOU";
-  let count = 0;
-  for (const char of sentence) {
-    if (vowels.includes(char)) {
-      count++;
-    }
-  }
-  return count;
+  // Your code here: Return the count of vowels (a, e, i, o, u)
+  return 0;
 }
-
-console.log(countVowels("CodeQuest is awesome"));
 `,
-      java: `// Java Starter Code
+            java: `// Java Starter Code
 public class Solution {
     public static int countVowels(String sentence) {
         String vowels = "aeiouAEIOU";
@@ -672,7 +642,7 @@ public class Solution {
     }
 }
 `,
-      cpp: `// C++ Starter Code
+            cpp: `// C++ Starter Code
 #include <iostream>
 #include <string>
 
@@ -692,36 +662,36 @@ int main() {
     return 0;
 }
 `
-    },
-    sampleInput: 'sentence = "CodeQuest is awesome"',
-    sampleOutput: "8",
-    hints: [
-      "Store all vowels in a reference string or set: 'aeiouAEIOU'.",
-      "Loop through each character and check if it belongs to your vowels set."
-    ],
-    concepts: ["Iteration", "Membership Testing", "Accumulators"],
-    testCases: [
-      { input: 'sentence = "CodeQuest is awesome"', expected: "8", description: "Multi-word phrase" },
-      { input: 'sentence = "rhythm"', expected: "0", description: "Word with no vowels" },
-      { input: 'sentence = "AEIOU"', expected: "5", description: "All uppercase vowels" }
-    ]
-  }
+        },
+        sampleInput: 'sentence = "CodeQuest is awesome"',
+        sampleOutput: "9",
+        hints: [
+            "Store all vowels in a reference string or set: 'aeiouAEIOU'.",
+            "Loop through each character and check if it belongs to your vowels set."
+        ],
+        concepts: ["Iteration", "Membership Testing", "Accumulators"],
+        testCases: [
+            { input: 'sentence = "CodeQuest is awesome"', expected: "9", description: "Multi-word phrase", args: ["CodeQuest is awesome"], expectedValue: 9 },
+            { input: 'sentence = "rhythm"', expected: "0", description: "Word with no vowels", args: ["rhythm"], expectedValue: 0 },
+            { input: 'sentence = "AEIOU"', expected: "5", description: "All uppercase vowels", args: ["AEIOU"], expectedValue: 5 }
+        ]
+    }
 ];
 
 // Helper methods for problem exploration
 function getAllProblems() {
-  return SAMPLE_PROBLEMS;
+    return SAMPLE_PROBLEMS;
 }
 
 function getProblemById(id) {
-  return SAMPLE_PROBLEMS.find(p => p.id === id) || SAMPLE_PROBLEMS[0];
+    return SAMPLE_PROBLEMS.find(p => p.id === id) || SAMPLE_PROBLEMS[0];
 }
 
 function getAvailableLanguages() {
-  return [
-    { key: "python", label: "Python", icon: "🐍", extension: ".py" },
-    { key: "javascript", label: "JavaScript", icon: "⚡", extension: ".js" },
-    { key: "java", label: "Java", icon: "☕", extension: ".java" },
-    { key: "cpp", label: "C++", icon: "⚙️", extension: ".cpp" }
-  ];
+    return [
+        { key: "python", label: "Python", icon: "🐍", extension: ".py" },
+        { key: "javascript", label: "JavaScript", icon: "⚡", extension: ".js" },
+        { key: "java", label: "Java", icon: "☕", extension: ".java" },
+        { key: "cpp", label: "C++", icon: "⚙️", extension: ".cpp" }
+    ];
 }
